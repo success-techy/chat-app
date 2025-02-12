@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .message-box {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: #f1f1f1;
+        }
+        .message {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .sent {
+            background: #007bff;
+            color: white;
+            text-align: right;
+        }
+        .received {
+            background: #e9ecef;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="chat-container">
+        <h3 class="text-center">Chat Room</h3>
+
+        <div class="mb-3">
+            <label class="form-label">Select User:</label>
+            <select id="username" class="form-select">
+                <option value="user1">User1</option>
+                <option value="user2">User2</option>
+            </select>
+            <button class="btn btn-primary mt-2 w-100" onclick="joinChat()">Join Chat</button>
+        </div>
+
+        <h5>Online Users</h5>
+        <ul id="user-list" class="list-group"></ul>
+
+        <h5 class="mt-3">Send Private Message</h5>
+        <select id="recipient" class="form-select mb-2">
+            <option value="user1">User1</option>
+            <option value="user2">User2</option>
+        </select>
+        <input type="text" id="message" class="form-control mb-2" placeholder="Type a message...">
+        <button class="btn btn-success w-100" onclick="sendMessage()">Send</button>
+
+        <h5 class="mt-3">Messages</h5>
+        <div id="messages" class="message-box"></div>
+    </div>
+</div>
+
+<script>
+    var socket = io();
+    var currentUser = "";
+
+    function joinChat() {
+        currentUser = document.getElementById('username').value;
+        socket.emit('join', {'username': currentUser});
+    }
+
+    socket.on('update_users', function(users) {
+        let userList = document.getElementById('user-list');
+        userList.innerHTML = '';
+        for (let user in users) {
+            if (users[user]) {
+                let li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.innerText = user;
+                userList.appendChild(li);
+            }
+        }
+    });
+
+    function sendMessage() {
+        let recipient = document.getElementById('recipient').value;
+        let message = document.getElementById('message').value;
+        if (message.trim() !== "") {
+            socket.emit('private_message', {'sender': currentUser, 'recipient': recipient, 'message': message});
+            displayMessage(currentUser, message, true);
+            document.getElementById('message').value = "";
+        }
+    }
+
+    function displayMessage(user, message, isSender) {
+        let messageDiv = document.createElement('div');
+        messageDiv.className = isSender ? 'message sent' : 'message received';
+        messageDiv.innerText = user + ': ' + message;
+        document.getElementById('messages').appendChild(messageDiv);
+    }
+
+    socket.on('private_message', function(data) {
+        displayMessage(data.sender, data.message, false);
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
