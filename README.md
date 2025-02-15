@@ -1,6 +1,6 @@
 Install below Packages:
   yum install python3 python3-pip
-  pip3 install flask flask_socketio
+  pip3 install flask flask_socketio eventlet 
 
 Run Application:
   python3 app.py
