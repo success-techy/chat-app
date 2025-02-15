@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, {{ username }}</h2>
+        <button onclick="logout()" class="btn btn-danger">Logout</button>
+
+        <h4>Online Users</h4>
+        <ul id="user-list" class="list-group"></ul>
+
+        <h4>Chat</h4>
+        <select id="recipient" class="form-select">
+            <option value="" disabled selected>Select a user</option>
+            {% for user in users %}
+                {% if user != username %}
+                    <option value="{{ user }}">{{ user }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <div id="messages" class="mt-3"></div>
+
+        <input type="text" id="message" class="form-control mt-2" placeholder="Type a message">
+        <button onclick="sendMessage()" class="btn btn-primary mt-2">Send</button>
+    </div>
+
+    <script>
+        var socket = io();
+        var currentUser = "{{ username }}";
+
+        // Auto-join the chat
+        socket.emit('join', {'username': currentUser});
+
+        socket.on('update_users', function(users) {
+            let userList = document.getElementById('user-list');
+            userList.innerHTML = '';
+            for (let user in users) {
+                if (users[user] && user !== currentUser) {
+                    let li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerText = user;
+                    userList.appendChild(li);
+                }
+            }
+        });
+
+        function sendMessage() {
+            let recipient = document.getElementById('recipient').value;
+            let message = document.getElementById('message').value;
+            if (message.trim() !== "" && recipient) {
+                socket.emit('private_message', {'sender': currentUser, 'recipient': recipient, 'message': message});
+                document.getElementById('message').value = "";
+            }
+        }
+
+        function displayMessage(user, message, isSender) {
+            let messageDiv = document.createElement('div');
+            messageDiv.className = isSender ? 'alert alert-primary' : 'alert alert-secondary';
+            messageDiv.innerText = user + ': ' + message;
+            document.getElementById('messages').appendChild(messageDiv);
+        }
+
+        // Load past messages when the user joins
+        socket.on('private_message', function(data) {
+            displayMessage(data.sender, data.message, data.sender === currentUser);
+        });
+
+        function logout() {
+            window.location.href = "/logout";
+        }
+    </script>
+</body>
+</html>
