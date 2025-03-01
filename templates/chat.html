@@ -41,6 +41,31 @@
             margin-top: 8px;
             border-radius: 10px;
         }
+        /* New styles for file upload */
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 10px;
+        }
+        #file-input {
+            display: none;
+        }
+        .file-upload-label {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            padding: 5px;
+        }
+        #message {
+            padding-right: 40px;
+            width: 100%;
+        }
+        #selected-file {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -64,8 +89,12 @@
 
         <div class="messages-container border p-3 mb-3" id="messages" style="height: 300px; overflow-y: auto;"></div>
 
-        <input type="text" id="message" class="form-control" placeholder="Type your message...">
-        <input type="file" id="image-upload" accept="image/*" class="form-control my-2">
+        <div class="input-wrapper">
+            <input type="text" id="message" class="form-control" placeholder="Type your message...">
+            <label for="file-input" class="file-upload-label">📎</label>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+        <div id="selected-file"></div>
         <button onclick="sendMessage()" class="btn btn-primary">Send</button>
     </div>
 
@@ -75,11 +104,17 @@
 
         socket.emit('join', {'username': currentUser});
 
+        // Handle file selection display
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : '';
+            document.getElementById('selected-file').textContent = fileName;
+        });
+
         function sendMessage() {
             let recipient = document.getElementById('recipient').value;
             let message = document.getElementById('message').value;
-            let imageInput = document.getElementById('image-upload');
-            let file = imageInput.files[0];
+            let fileInput = document.getElementById('file-input');
+            let file = fileInput.files[0];
 
             if (!recipient) return;
 
@@ -99,6 +134,10 @@
                         'message': message,
                         'image': imageUrl
                     });
+                    // Clear inputs after sending
+                    document.getElementById('message').value = "";
+                    fileInput.value = "";
+                    document.getElementById('selected-file').textContent = "";
                 });
             } else {
                 socket.emit('private_message', {
@@ -106,10 +145,8 @@
                     'recipient': recipient,
                     'message': message
                 });
+                document.getElementById('message').value = "";
             }
-
-            document.getElementById('message').value = "";
-            imageInput.value = "";
         }
 
         socket.on('private_message', function(data) {
