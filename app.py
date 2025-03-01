@@ -9,13 +9,16 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Predefined usersusers = {"gun": "password1", "rose": "password2"}
+# Predefined users
+users = {"gun": "password1", "rose": "password2"}
+
 # Ensure upload directory exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
 # Initialize database
 def init_db():
+
     conn = sqlite3.connect("chat.db")
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
