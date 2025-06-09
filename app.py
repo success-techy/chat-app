@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify
 from flask_socketio import SocketIO, emit, join_room
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -18,7 +19,6 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 
 # Initialize database
 def init_db():
-
     conn = sqlite3.connect("chat.db")
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
@@ -34,6 +34,42 @@ def init_db():
 init_db()
 
 online_users = {}
+
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    sender = session.get('username')
+    recipient = request.form.get('recipient')
+    message = request.form.get('message')
+    image_file = request.files.get('image')
+
+    image_url = None
+    if image_file:
+        filename = secure_filename(str(uuid.uuid4()) + "_" + image_file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        image_file.save(filepath)
+        image_url = f"/uploads/{filename}"
+
+    msg_data = {
+        'sender': sender,
+        'recipient': recipient,
+        'message': message,
+        'image_url': image_url
+    }
+
+    # Save message to DB
+    conn = sqlite3.connect("chat.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO messages (sender, recipient, message, image) VALUES (?, ?, ?, ?)",
+                   (sender, recipient, message, image_url))
+    conn.commit()
+    conn.close()
+
+    # Emit to both sender and recipient
+    socketio.emit('private_message', msg_data, room=sender)
+    if recipient != sender:
+        socketio.emit('private_message', msg_data, room=recipient)
+
+    return jsonify({'status': 'sent'})
 
 @app.route('/')
 def index():
@@ -70,18 +106,6 @@ def logout():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return "No file part", 400
-    file = request.files['file']
-    if file.filename == '':
-        return "No selected file", 400
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
-    return url_for('uploaded_file', filename=filename)
-
 @socketio.on('join')
 def handle_join(data):
     username = data['username']
@@ -96,7 +120,7 @@ def handle_join(data):
     conn.close()
 
     for msg in messages:
-        emit('private_message', {'sender': msg[0], 'message': msg[1], 'image': msg[2]}, room=username)
+        emit('private_message', {'sender': msg[0], 'message': msg[1], 'image_url': msg[2]}, room=username)
 
     emit('update_users', online_users, broadcast=True)
 
@@ -105,16 +129,16 @@ def handle_private_message(data):
     sender = data['sender']
     recipient = data['recipient']
     message = data.get('message', '')
-    image = data.get('image', None)
+    image_url = data.get('image_url', None)
 
     conn = sqlite3.connect("chat.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO messages (sender, recipient, message, image) VALUES (?, ?, ?, ?)",
-                   (sender, recipient, message, image))
+                   (sender, recipient, message, image_url))
     conn.commit()
     conn.close()
 
-    msg_data = {'sender': sender, 'message': message, 'image': image}
+    msg_data = {'sender': sender, 'message': message, 'image_url': image_url}
 
     if recipient in online_users:
         emit('private_message', msg_data, room=recipient)
