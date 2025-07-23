@@ -11,7 +11,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Predefined users
-users = {"gun": "password1", "rose": "password2"}
+users = {"ngt": "password1", "mar": "password2"}
 
 # Ensure upload directory exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
