@@ -7,4 +7,4 @@ Run Application:
 
 Validation:
  Copy the pulic ip and go to browser paste the Ip with 5000 port number 
- Ex: 18.34.56.77:50000
+ Ex: 18.34.56.77:5000
